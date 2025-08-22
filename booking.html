@@ -73,7 +73,7 @@
     for(let day=1; day<=lastDay.getDate(); day++){
       const date = new Date(year, month, day);
       const dayStr = date.toISOString().split('T')[0];
-      const cls="available"; // Koppla till Sheet för upptagna tider om du vill
+      const cls="available"; // Här kan du koppla till Sheet för upptagna tider
       table += `<td class="${cls}" data-date="${dayStr}">${day}</td>`;
       if((day+firstDay.getDay())%7===0) table+=`</tr><tr>`;
     }
@@ -124,9 +124,10 @@
       message: customerForm.message.value
     };
 
-    console.log("Skickar till EmailJS:", templateParams); // Debug
+    console.log("Skickar till EmailJS:", templateParams);
 
-    emailjs.send('service_luw5k4u', 'template_j6ztrpp', templateParams)
+    // OBS: Korrekt Template ID används nu
+    emailjs.send('service_luw5k4u', 'template_cpux8e5', templateParams)
       .then(()=>{
         status.style.color="green";
         status.textContent="Bokning skickad! Bekräftelse skickas till kunden.";
