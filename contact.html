@@ -2,12 +2,82 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <title>Kontakt – Elias Flytt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontakt – CityTransport</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Kontakta oss</h1>
-  <p>Telefon: 070-123 45 67</p>
-  <p>E-post: info@eliasflytt.se</p>
-  <p>Adress: Stockholm</p>
+
+  <header>
+    <h1>Kontakt – CityTransport</h1>
+    <nav>
+      <ul>
+        <li><a href="index.html">Start</a></li>
+        <li><a href="booking.html">Boka flytt</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="contact-section">
+    <h2>Kontakta oss</h2>
+    <form id="contact-form">
+      <label for="name">Namn:</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="email">E-post:</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="phone">Telefon:</label>
+      <input type="tel" id="phone" name="phone" required>
+
+      <label for="message">Meddelande:</label>
+      <textarea id="message" name="message" rows="5" required></textarea>
+
+      <button type="submit">Skicka</button>
+    </form>
+
+    <div class="contact-info">
+      <p>E-post: <a href="mailto:citytransportgbg@gmail.com">citytransportgbg@gmail.com</a></p>
+      <p>Telefon: <a href="tel:+46701234567">070-123 45 67</a></p>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 CityTransport. Alla rättigheter förbehållna.</p>
+  </footer>
+
+  <!-- EmailJS Script -->
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <script>
+    (function() {
+      emailjs.init("E7HH_m3tC91tBo8Vr"); // Din Public Key
+    })();
+
+    document.getElementById('contact-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      const form = this;
+
+      // 1️⃣ Skicka till admin
+      emailjs.sendForm('service_luw5k4u', 'template_cpux8e5', form)
+        .then(() => {
+          console.log('Meddelande skickat till admin.');
+        }, (err) => {
+          console.error('Fel vid skick till admin:', err);
+        });
+
+      // 2️⃣ Skicka bekräftelse till kund
+      emailjs.sendForm('service_luw5k4u', 'template_j6ztrpp', form)
+        .then(() => {
+          alert('Tack! Din bokning har skickats och bekräftelse skickad till din e-post.');
+          form.reset();
+        }, (err) => {
+          alert('Oj! Något gick fel, försök igen.');
+          console.error('Fel vid skick till kund:', err);
+        });
+
+    });
+  </script>
+
 </body>
 </html>

@@ -1,12 +1,183 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="UTF-8">
-  <title>Boka flytt – Elias Flytt</title>
+<meta charset="UTF-8">
+<title>Boka flytt – CityTransport</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: Arial, sans-serif; background: #f7f9fc; margin: 0; padding: 0; }
+  header { background: #007BFF; color: white; padding: 20px 0; text-align: center; }
+  h1, h2 { margin: 0; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
+  section { background: white; padding: 20px; margin-bottom: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  form label { grid-column: span 2; font-weight: bold; margin-top: 10px; }
+  form input, form textarea, form button { grid-column: span 2; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+  form button { background: #007BFF; color: white; border: none; cursor: pointer; transition: 0.3s; }
+  form button:hover { background: #0056b3; }
+  #status { margin-top: 10px; font-weight: bold; color: green; }
+  #calendar { overflow-x: auto; }
+  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: top; min-width: 90px; }
+  th { background: #f0f0f0; }
+  td.booked { background-color: #ffe5e5; font-weight: bold; }
+  td.available { background-color: #e5ffe5; }
+  td.today { border: 2px solid #007BFF; }
+  td:hover { background-color: #d0e7ff; cursor: pointer; }
+  @media (max-width: 768px) {
+    form { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
-  <h1>Boka din flytt</h1>
-  <!-- Klistra in Google Form embed här -->
-  <iframe src="DIN_GOOGLE_FORM_URL" width="640" height="800"></iframe>
+
+<header>
+  <h1>Boka flytt – CityTransport</h1>
+</header>
+
+<main>
+  <!-- Bokningsformulär -->
+  <section>
+    <h2>Fyll i dina uppgifter</h2>
+    <form id="booking-form">
+      <label for="name">Namn:</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="email">E-post:</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="phone">Telefon:</label>
+      <input type="tel" id="phone" name="phone" required>
+
+      <label for="date">Datum:</label>
+      <input type="date" id="date" name="date" required>
+
+      <label for="time">Tid:</label>
+      <input type="time" id="time" name="time" required>
+
+      <label for="message">Meddelande (valfritt):</label>
+      <textarea id="message" name="message"></textarea>
+
+      <button type="submit">Boka flytt</button>
+    </form>
+    <p id="status"></p>
+  </section>
+
+  <!-- Bokningskalender -->
+  <section>
+    <h2>Bokningskalender</h2>
+    <div class="calendar-header">
+      <button id="prev-month">« Föregående</button>
+      <h3 id="month-year"></h3>
+      <button id="next-month">Nästa »</button>
+    </div>
+    <div id="calendar">
+      <table>
+        <thead>
+          <tr>
+            <th>Mån</th>
+            <th>Tis</th>
+            <th>Ons</th>
+            <th>Tor</th>
+            <th>Fre</th>
+            <th>Lör</th>
+            <th>Sön</th>
+          </tr>
+        </thead>
+        <tbody id="calendar-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+<script>
+  emailjs.init("E7HH_m3tC91tBo8Vr");
+  const SHEET_URL = "https://script.google.com/macros/s/AKfycbzKQw_AHGa8j8AvUyKT37_U2YjYfeo4f2ug-uWUZKtFXc0MIr22PzBZ2-q5BK_O204VjA/exec";
+  const form = document.getElementById('booking-form');
+  const status = document.getElementById('status');
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const templateParams = {
+      name: form.name.value,
+      email: form.email.value,
+      phone: form.phone.value,
+      date: form.date.value,
+      time: form.time.value,
+      message: form.message.value
+    };
+    try {
+      await emailjs.send('service_luw5k4u','template_j6ztrpp',templateParams);
+      await fetch(SHEET_URL,{method:"POST",body:JSON.stringify(templateParams)});
+      status.textContent = "Bokning skickad! Bekräftelse skickas till kunden.";
+      form.reset();
+      loadCalendar(currentMonth,currentYear);
+    } catch(err){
+      status.textContent = "Något gick fel, försök igen.";
+      console.error(err);
+    }
+  });
+
+  // Kalender logik
+  let currentMonth = new Date().getMonth();
+  let currentYear = new Date().getFullYear();
+
+  async function loadCalendar(month, year){
+    const res = await fetch(SHEET_URL);
+    const data = await res.json();
+    const bookingsByDate = {};
+    data.forEach(row=>{
+      const bookingDate = new Date(row.Datum);
+      if(bookingDate.getMonth()===month && bookingDate.getFullYear()===year){
+        const dayStr = row.Datum;
+        if(!bookingsByDate[dayStr]) bookingsByDate[dayStr] = [];
+        bookingsByDate[dayStr].push(row.Tid);
+      }
+    });
+    const firstDay = (new Date(year, month)).getDay();
+    const daysInMonth = 32 - new Date(year, month, 32).getDate();
+    const tbl = document.getElementById("calendar-body");
+    tbl.innerHTML="";
+    document.getElementById("month-year").textContent=new Date(year,month).toLocaleString("sv-SE",{month:"long",year:"numeric"});
+    let date=1;
+    for(let i=0;i<6;i++){
+      const row=document.createElement("tr");
+      for(let j=0;j<7;j++){
+        const cell=document.createElement("td");
+        let startDay=(firstDay===0?7:firstDay);
+        if(i===0 && j<startDay-1){ cell.innerHTML=""; }
+        else if(date>daysInMonth){ break; }
+        else{
+          const dayStr = `${year}-${String(month+1).padStart(2,"0")}-${String(date).padStart(2,"0")}`;
+          cell.innerHTML=`<strong>${date}</strong>`;
+          if(bookingsByDate[dayStr]){
+            cell.classList.add("booked");
+            const times = bookingsByDate[dayStr].join(", ");
+            cell.innerHTML += `<br>🔴 ${bookingsByDate[dayStr].length} bokning(ar)<br>${times}`;
+          } else {
+            cell.classList.add("available");
+            cell.innerHTML += `<br>🟢 Ledig`;
+          }
+          const today=new Date();
+          if(date===today.getDate() && month===today.getMonth() && year===today.getFullYear()){ cell.classList.add("today"); }
+          date++;
+        }
+        row.appendChild(cell);
+      }
+      tbl.appendChild(row);
+    }
+  }
+
+  document.getElementById("prev-month").addEventListener("click",()=>{
+    currentMonth--; if(currentMonth<0){currentMonth=11; currentYear--;} loadCalendar(currentMonth,currentYear);
+  });
+  document.getElementById("next-month").addEventListener("click",()=>{
+    currentMonth++; if(currentMonth>11){currentMonth=0; currentYear++;} loadCalendar(currentMonth,currentYear);
+  });
+
+  loadCalendar(currentMonth,currentYear);
+</script>
 </body>
 </html>
