@@ -124,9 +124,6 @@
       message: customerForm.message.value
     };
 
-    console.log("Skickar till EmailJS:", templateParams);
-
-    // OBS: Korrekt Template ID används nu
     emailjs.send('service_luw5k4u', 'template_cpux8e5', templateParams)
       .then(()=>{
         status.style.color="green";
