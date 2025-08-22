@@ -6,12 +6,21 @@
 <title>Boka flytt – CityTransport</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  #calendar { margin: 20px auto; width: 90%; max-width: 700px; border-collapse: collapse; text-align: center; }
-  #calendar th, #calendar td { border: 1px solid #ccc; padding: 10px; cursor: pointer; }
-  #calendar td.upptagen { background-color: #f8d7da; cursor: not-allowed; }
-  #calendar td.ledig { background-color: #d4edda; }
-  #calendar-nav { text-align: center; margin-bottom: 10px; }
-  #time-select, #customer-form { display: none; margin-top: 20px; }
+  body { font-family: Arial, sans-serif; background: #f9f9f9; text-align: center; }
+  h1 { margin-top: 20px; color: #333; }
+  #calendar-nav { margin: 20px; }
+  #calendar-nav button { padding: 5px 15px; margin: 0 10px; cursor: pointer; background:#007bff; color:#fff; border:none; border-radius:4px; }
+  #calendar-nav button:hover { background:#0056b3; }
+  #calendar { margin: 0 auto; width: 90%; max-width:700px; border-collapse: collapse; text-align: center; }
+  #calendar th, #calendar td { border:1px solid #ccc; padding:10px; min-width:40px; transition:0.3s; position:relative; }
+  #calendar td:hover { background:#e0f7fa; cursor:pointer; }
+  #calendar td.upptagen { background:#f8d7da; cursor:not-allowed; }
+  #calendar td.ledig { background:#d4edda; }
+  #calendar td.fåttider { background:#ffeeba; }
+  #time-select, #customer-form { display:none; margin-top:20px; }
+  #available-times, #booking-form input, #booking-form textarea, #booking-form button { padding:10px; margin:5px 0; width:80%; max-width:400px; }
+  #booking-form button { background:#28a745; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+  #booking-form button:hover { background:#218838; }
 </style>
 </head>
 <body>
@@ -54,7 +63,6 @@
 <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <script>
 emailjs.init("E7HH_m3tC91tBo8Vr");
-
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzKQw_AHGa8j8AvUyKT37_U2YjYfeo4f2ug-uWUZKtFXc0MIr22PzBZ2-q5BK_O204VjA/exec";
 
 let bookings = {};
@@ -71,9 +79,7 @@ async function loadBookings(){
       if(!bookings[b.Datum]) bookings[b.Datum]=[];
       bookings[b.Datum].push(b.Tid);
     });
-  }catch(err){
-    console.error("Kunde inte ladda bokningar:",err);
-  }
+  }catch(err){ console.error("Kunde inte ladda bokningar:",err); }
 }
 
 function renderCalendar(month, year){
@@ -82,7 +88,6 @@ function renderCalendar(month, year){
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
-
   const tbody = document.querySelector("#calendar tbody");
   tbody.innerHTML="";
   let date=1;
@@ -98,10 +103,16 @@ function renderCalendar(month, year){
         cell.textContent=date;
         const bookedTimes = bookings[dayStr]||[];
         const timesLeft = availableTimes.filter(t=>!bookedTimes.includes(t));
-        if(timesLeft.length===0){
-          cell.classList.add("upptagen");
-        } else {
-          cell.classList.add("ledig");
+
+        // Färg efter antal tider kvar
+        if(timesLeft.length===0) cell.classList.add("upptagen");
+        else if(timesLeft.length<=2) cell.classList.add("fåttider");
+        else cell.classList.add("ledig");
+
+        // Tooltip med bokade tider
+        if(bookedTimes.length>0) cell.title = "Bokade tider: "+bookedTimes.join(", ");
+
+        if(timesLeft.length>0){
           cell.addEventListener("click",()=>{
             selectedDate = dayStr;
             document.getElementById("selected-date").textContent = dayStr;
@@ -118,6 +129,7 @@ function renderCalendar(month, year){
             document.getElementById("customer-form").style.display="none";
           });
         }
+
         date++;
       }
       row.appendChild(cell);
@@ -130,22 +142,14 @@ const now = new Date();
 let currentMonth = now.getMonth();
 let currentYear = now.getFullYear();
 
-async function init(){
-  await loadBookings();
-  renderCalendar(currentMonth,currentYear);
-}
+async function init(){ await loadBookings(); renderCalendar(currentMonth,currentYear); }
 init();
 
 document.getElementById("prev-month").addEventListener("click",()=>{
-  currentMonth--;
-  if(currentMonth<0){currentMonth=11; currentYear--;}
-  renderCalendar(currentMonth,currentYear);
+  currentMonth--; if(currentMonth<0){currentMonth=11; currentYear--;} renderCalendar(currentMonth,currentYear);
 });
-
 document.getElementById("next-month").addEventListener("click",()=>{
-  currentMonth++;
-  if(currentMonth>11){currentMonth=0; currentYear++;}
-  renderCalendar(currentMonth,currentYear);
+  currentMonth++; if(currentMonth>11){currentMonth=0; currentYear++;} renderCalendar(currentMonth,currentYear);
 });
 
 document.getElementById("select-time").addEventListener("click",()=>{
