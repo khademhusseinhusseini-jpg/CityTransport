@@ -2,179 +2,192 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-<title>Boka flytt – CityTransport</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boka flytt – CityTransport</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  body { font-family: Arial, sans-serif; background: #f7f9fc; margin:0; padding:0;}
-  header { background:#007BFF; color:white; text-align:center; padding:20px 0;}
-  main { max-width:1000px; margin:20px auto; padding:0 20px;}
-  section { background:white; padding:20px; margin-bottom:30px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.1);}
-  table { width:100%; border-collapse:collapse; margin-top:10px;}
-  th, td { border:1px solid #ddd; padding:10px; text-align:center; vertical-align:top; min-width:90px;}
-  th { background:#f0f0f0;}
-  td.ledigt { cursor:pointer; }
-  td.today { border:2px solid #007BFF;}
-  #time-select, #customer-form { display:none; margin-top:20px;}
-  input, select, textarea, button { padding:10px; border-radius:5px; border:1px solid #ccc; width:100%; margin-top:5px;}
-  button { background:#007BFF; color:white; border:none; cursor:pointer; margin-top:10px; }
-  button:hover { background:#0056b3;}
-  #status { font-weight:bold; margin-top:10px; color:green;}
+  #calendar { margin: 20px auto; width: 90%; max-width: 700px; border-collapse: collapse; text-align: center; }
+  #calendar th, #calendar td { border: 1px solid #ccc; padding: 10px; cursor: pointer; }
+  #calendar td.upptagen { background-color: #f8d7da; cursor: not-allowed; }
+  #calendar td.ledig { background-color: #d4edda; }
+  #calendar-nav { text-align: center; margin-bottom: 10px; }
+  #time-select, #customer-form { display: none; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Boka flytt – CityTransport</h1>
-</header>
+<h1>Boka din flytt – CityTransport</h1>
 
-<main>
-  <section>
-    <h2>Bokningskalender</h2>
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <button id="prev-month">« Föregående</button>
-      <h3 id="month-year"></h3>
-      <button id="next-month">Nästa »</button>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Mån</th><th>Tis</th><th>Ons</th><th>Tor</th><th>Fre</th><th>Lör</th><th>Sön</th>
-        </tr>
-      </thead>
-      <tbody id="calendar-body"></tbody>
-    </table>
+<div id="calendar-nav">
+  <button id="prev-month">&lt; Föregående månad</button>
+  <span id="current-month"></span>
+  <button id="next-month">Nästa månad &gt;</button>
+</div>
 
-    <div id="time-select">
-      <h3>Välj tid för <span id="selected-date"></span></h3>
-      <select id="available-times"></select>
-      <button id="confirm-time">Bekräfta tid</button>
-    </div>
+<table id="calendar">
+  <thead>
+    <tr>
+      <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-    <div id="customer-form">
-      <h3>Fyll i dina uppgifter</h3>
-      <input type="text" id="name" placeholder="Namn" required>
-      <input type="email" id="email" placeholder="E-post" required>
-      <input type="tel" id="phone" placeholder="Telefon" required>
-      <textarea id="message" placeholder="Meddelande (valfritt)"></textarea>
-      <button id="submit-booking">Skicka bokning</button>
-      <p id="status"></p>
-    </div>
-  </section>
-</main>
+<section id="time-select">
+  <h3>Välj tid för <span id="selected-date"></span></h3>
+  <select id="available-times"></select>
+  <button id="select-time">Välj tid</button>
+</section>
+
+<section id="customer-form">
+  <h3>Fyll i dina uppgifter</h3>
+  <form id="booking-form">
+    <input type="text" id="name" name="name" placeholder="Namn" required><br>
+    <input type="email" id="email" name="email" placeholder="E-post" required><br>
+    <input type="tel" id="phone" name="phone" placeholder="Telefon" required><br>
+    <textarea id="message" name="message" placeholder="Meddelande (valfritt)"></textarea><br>
+    <button type="submit">Skicka bokning</button>
+  </form>
+  <p id="status"></p>
+</section>
 
 <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <script>
-  emailjs.init("E7HH_m3tC91tBo8Vr"); // Public key
-  const SHEET_URL = "https://script.google.com/macros/s/AKfycbzKQw_AHGa8j8AvUyKT37_U2YjYfeo4f2ug-uWUZKtFXc0MIr22PzBZ2-q5BK_O204VjA/exec";
+emailjs.init("E7HH_m3tC91tBo8Vr");
 
-  let currentMonth = new Date().getMonth();
-  let currentYear = new Date().getFullYear();
-  let bookingsData = [];
-  let selectedDate = null;
-  let selectedTime = null;
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzKQw_AHGa8j8AvUyKT37_U2YjYfeo4f2ug-uWUZKtFXc0MIr22PzBZ2-q5BK_O204VjA/exec";
 
-  async function loadBookings(){
+let bookings = {};
+let selectedDate = "";
+let selectedTime = "";
+const availableTimes = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00"];
+
+async function loadBookings(){
+  try{
     const res = await fetch(SHEET_URL);
-    bookingsData = await res.json();
+    const data = await res.json();
+    bookings = {};
+    data.forEach(b=>{
+      if(!bookings[b.Datum]) bookings[b.Datum]=[];
+      bookings[b.Datum].push(b.Tid);
+    });
+  }catch(err){
+    console.error("Kunde inte ladda bokningar:",err);
   }
+}
 
-  function generateTimes(day){
-    const allTimes = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"];
-    const bookedTimes = bookingsData.filter(b=>b.Datum===day).map(b=>b.Tid);
-    return allTimes.filter(t=>!bookedTimes.includes(t));
-  }
+function renderCalendar(month, year){
+  const monthNames = ["Januari","Februari","Mars","April","Maj","Juni","Juli","Augusti","September","Oktober","November","December"];
+  document.getElementById("current-month").textContent = monthNames[month]+" "+year;
 
-  function renderCalendar(month, year){
-    const firstDay = new Date(year, month,1).getDay();
-    const daysInMonth = 32 - new Date(year, month,32).getDate();
-    const tbl = document.getElementById("calendar-body");
-    tbl.innerHTML="";
-    document.getElementById("month-year").textContent = new Date(year,month).toLocaleString("sv-SE",{month:"long", year:"numeric"});
-    let date=1;
-    for(let i=0;i<6;i++){
-      const row=document.createElement("tr");
-      for(let j=0;j<7;j++){
-        const cell=document.createElement("td");
-        let startDay = (firstDay===0?7:firstDay);
-        if(i===0 && j<startDay-1){ cell.innerHTML=""; }
-        else if(date>daysInMonth){ cell.innerHTML=""; }
-        else{
-          const dayStr = `${year}-${String(month+1).padStart(2,"0")}-${String(date).padStart(2,"0")}`;
-          const allTimes = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"];
-          const bookedTimes = bookingsData.filter(b=>b.Datum===dayStr).map(b=>b.Tid);
-          const availableTimes = allTimes.filter(t=>!bookedTimes.includes(t));
-          cell.innerHTML = `<strong>${date}</strong>`;
-          cell.title = `${availableTimes.length} av ${allTimes.length} tider kvar`;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
 
-          if(availableTimes.length === 0) cell.style.background="#ffe5e5"; // fullbokad
-          else if(availableTimes.length <= 2) cell.style.background="#fff5cc"; // nästan fullbokad
-          else cell.style.background="#e5ffe5"; // gott om tider
+  const tbody = document.querySelector("#calendar tbody");
+  tbody.innerHTML="";
+  let date=1;
 
-          if(availableTimes.length>0){
-            cell.classList.add("ledigt");
-            cell.addEventListener("click",()=>{
-              selectedDate = dayStr;
-              document.getElementById("selected-date").textContent = dayStr;
-              const select = document.getElementById("available-times");
-              select.innerHTML = "";
-              availableTimes.forEach(t=>{
-                const option = document.createElement("option");
-                option.value = t; option.textContent = t;
-                select.appendChild(option);
-              });
-              document.getElementById("time-select").style.display="block";
+  for(let i=0;i<6;i++){
+    const row = document.createElement("tr");
+    for(let j=0;j<7;j++){
+      const cell = document.createElement("td");
+      if(i===0 && j<firstDay || date>daysInMonth){
+        cell.textContent="";
+      } else {
+        const dayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+        cell.textContent=date;
+        const bookedTimes = bookings[dayStr]||[];
+        const timesLeft = availableTimes.filter(t=>!bookedTimes.includes(t));
+        if(timesLeft.length===0){
+          cell.classList.add("upptagen");
+        } else {
+          cell.classList.add("ledig");
+          cell.addEventListener("click",()=>{
+            selectedDate = dayStr;
+            document.getElementById("selected-date").textContent = dayStr;
+
+            const select = document.getElementById("available-times");
+            select.innerHTML="";
+            timesLeft.forEach(t=>{
+              const option = document.createElement("option");
+              option.value=t; option.textContent=t;
+              select.appendChild(option);
             });
-          }
 
-          const today=new Date();
-          if(date===today.getDate() && month===today.getMonth() && year===today.getFullYear()) cell.classList.add("today");
-
-          date++;
+            document.getElementById("time-select").style.display="block";
+            document.getElementById("customer-form").style.display="none";
+          });
         }
-        row.appendChild(cell);
+        date++;
       }
-      tbl.appendChild(row);
+      row.appendChild(cell);
     }
+    tbody.appendChild(row);
   }
+}
 
-  document.getElementById("prev-month").addEventListener("click",()=>{
-    currentMonth--; if(currentMonth<0){currentMonth=11; currentYear--;} renderCalendar(currentMonth,currentYear);
-  });
-  document.getElementById("next-month").addEventListener("click",()=>{
-    currentMonth++; if(currentMonth>11){currentMonth=0; currentYear++;} renderCalendar(currentMonth,currentYear);
-  });
+const now = new Date();
+let currentMonth = now.getMonth();
+let currentYear = now.getFullYear();
 
-  document.getElementById("confirm-time").addEventListener("click",()=>{
-    selectedTime = document.getElementById("available-times").value;
-    document.getElementById("time-select").style.display="none";
-    document.getElementById("customer-form").style.display="block";
-  });
+async function init(){
+  await loadBookings();
+  renderCalendar(currentMonth,currentYear);
+}
+init();
 
-  document.getElementById("submit-booking").addEventListener("click", async ()=>{
-    const templateParams = {
-      name: document.getElementById("name").value,
-      email: document.getElementById("email").value,
-      phone: document.getElementById("phone").value,
-      date: selectedDate,
-      time: selectedTime,
-      message: document.getElementById("message").value
-    };
-    try{
-      await emailjs.send('service_luw5k4u','template_j6ztrpp',templateParams);
-      await fetch(SHEET_URL,{method:"POST",body:JSON.stringify({Datum:selectedDate,Tid:selectedTime,...templateParams})});
-      document.getElementById("status").textContent = "Bokning skickad!";
-      document.getElementById("customer-form").reset();
-      document.getElementById("customer-form").style.display="none";
-      await loadBookings();
-      renderCalendar(currentMonth,currentYear);
-    }catch(err){
-      console.error(err);
-      document.getElementById("status").textContent = "Fel, försök igen.";
-    }
-  });
+document.getElementById("prev-month").addEventListener("click",()=>{
+  currentMonth--;
+  if(currentMonth<0){currentMonth=11; currentYear--;}
+  renderCalendar(currentMonth,currentYear);
+});
 
-  // Initial load
-  loadBookings().then(()=>renderCalendar(currentMonth,currentYear));
+document.getElementById("next-month").addEventListener("click",()=>{
+  currentMonth++;
+  if(currentMonth>11){currentMonth=0; currentYear++;}
+  renderCalendar(currentMonth,currentYear);
+});
+
+document.getElementById("select-time").addEventListener("click",()=>{
+  const t = document.getElementById("available-times").value;
+  if(!t) return alert("Välj tid!");
+  selectedTime = t;
+  document.getElementById("customer-form").style.display="block";
+});
+
+document.getElementById("booking-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  if(!selectedDate || !selectedTime) return alert("Välj datum och tid först!");
+
+  const templateParams = {
+    name: document.getElementById("name").value,
+    email: document.getElementById("email").value,
+    phone: document.getElementById("phone").value,
+    date: selectedDate,
+    time: selectedTime,
+    message: document.getElementById("message").value
+  };
+
+  try{
+    await emailjs.send('service_luw5k4u','template_j6ztrpp',templateParams);
+    await fetch(SHEET_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({Datum:selectedDate,Tid:selectedTime,...templateParams})
+    });
+
+    document.getElementById("status").textContent="Bokning skickad!";
+    document.getElementById("booking-form").reset();
+    document.getElementById("customer-form").style.display="none";
+
+    await loadBookings();
+    renderCalendar(currentMonth,currentYear);
+
+  }catch(err){
+    console.error(err);
+    document.getElementById("status").textContent="Fel, försök igen.";
+  }
+});
 </script>
 
 </body>
