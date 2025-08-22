@@ -67,7 +67,8 @@
     const lastDay = new Date(year, month + 1, 0);
     let table = `<table><tr>`;
     const weekdays = ["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
-    weekdays.forEach(d=>table+=`<th>${d}</th>`); table+=`</tr><tr>`;
+    weekdays.forEach(d=>table+=`<th>${d}</th>`); 
+    table+=`</tr><tr>`;
     for(let i=0;i<firstDay.getDay();i++) table += `<td></td>`;
     for(let day=1; day<=lastDay.getDate(); day++){
       const date = new Date(year, month, day);
@@ -90,6 +91,7 @@
         });
         timeSelect.style.display="block";
         customerForm.style.display="none";
+        status.textContent="";
       });
     });
   }
@@ -104,12 +106,16 @@
 
   customerForm.addEventListener('submit', function(e){
     e.preventDefault();
-    if(!selectedDate || !timeSelect.value){
-      status.textContent="Välj datum och tid först!";
+
+    if(!selectedDate){
+      status.textContent="Välj datum först!";
+      return;
+    }
+    if(!timeSelect.value){
+      status.textContent="Välj tid först!";
       return;
     }
 
-    // Matchar EmailJS template fältnamn
     const templateParams = {
       name: customerForm.name.value,
       email: customerForm.email.value,
@@ -118,15 +124,18 @@
       message: customerForm.message.value
     };
 
-    console.log("Skickar till EmailJS:", templateParams);
+    console.log("Skickar till EmailJS:", templateParams); // Debug
 
     emailjs.send('service_luw5k4u', 'template_j6ztrpp', templateParams)
       .then(()=>{
+        status.style.color="green";
         status.textContent="Bokning skickad! Bekräftelse skickas till kunden.";
         customerForm.reset();
         timeSelect.value="";
         timeSelect.style.display="none";
+        selectedDate = null;
       }, (err)=>{
+        status.style.color="red";
         status.textContent="Något gick fel, försök igen.";
         console.error("EmailJS Error:", err);
       });
