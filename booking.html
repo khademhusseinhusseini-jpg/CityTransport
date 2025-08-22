@@ -19,7 +19,7 @@
   #customer-form input, #customer-form textarea { width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
   #customer-form button { background-color:#28a745; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; width:100%; font-size:1rem; }
   #customer-form button:hover { background-color:#218838; }
-  #status { margin-top:15px; font-weight:bold; color:#333; }
+  #status { margin-top:15px; font-weight:bold; color:#333; text-align:center; }
 </style>
 </head>
 <body>
@@ -108,10 +108,12 @@
     e.preventDefault();
 
     if(!selectedDate){
+      status.style.color="red";
       status.textContent="Välj datum först!";
       return;
     }
     if(!timeSelect.value){
+      status.style.color="red";
       status.textContent="Välj tid först!";
       return;
     }
