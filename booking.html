@@ -65,19 +65,22 @@
     const month = today.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
+
     let table = `<table><tr>`;
     const weekdays = ["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
-    weekdays.forEach(d=>table+=`<th>${d}</th>`); 
-    table+=`</tr><tr>`;
+    weekdays.forEach(d => table += `<th>${d}</th>`); 
+    table += `</tr><tr>`;
+
     for(let i=0;i<firstDay.getDay();i++) table += `<td></td>`;
+
     for(let day=1; day<=lastDay.getDate(); day++){
       const date = new Date(year, month, day);
       const dayStr = date.toISOString().split('T')[0];
-      const cls="available"; // Här kan du koppla till Sheet för upptagna tider
+      const cls="available"; // Här kan du senare koppla till Sheet för upptagna tider
       table += `<td class="${cls}" data-date="${dayStr}">${day}</td>`;
       if((day+firstDay.getDay())%7===0) table+=`</tr><tr>`;
     }
-    table+=`</tr></table>`;
+    table += `</tr></table>`;
     calendarEl.innerHTML = table;
 
     document.querySelectorAll('#calendar td.available').forEach(cell=>{
@@ -101,7 +104,9 @@
   timeSelect.addEventListener("change", ()=>{
     if(timeSelect.value){
       customerForm.style.display="block";
-    } else customerForm.style.display="none";
+    } else {
+      customerForm.style.display="none";
+    }
   });
 
   customerForm.addEventListener('submit', function(e){
