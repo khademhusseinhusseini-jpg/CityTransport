@@ -5,113 +5,121 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boka flytt – CityTransport</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}
-header{text-align:center;padding:40px 20px 20px;background:#333;color:white;}
-header h1{font-size:2.5rem;margin-bottom:10px;}
-header p{font-size:1.2rem;color:#ddd;}
-#booking{max-width:900px;margin:40px auto;padding:20px;background:white;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.1);text-align:center;}
-#calendar{margin:20px 0;}
-#calendar table{border-collapse:collapse;width:100%;max-width:700px;margin:0 auto;box-shadow:0 4px 10px rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;}
-#calendar th,#calendar td{padding:12px;text-align:center;cursor:pointer;}
-#calendar td.available:hover{background-color:#d1f0d1;}
-#calendar td.booked{background-color:#f0d1d1;cursor:not-allowed;}
-#time-select{display:none;margin:20px auto;padding:10px;font-size:1rem;border-radius:5px;border:1px solid #ccc;width:200px;}
-#customer-form{display:none;max-width:400px;margin:20px auto;text-align:left;}
-#customer-form input,#customer-form textarea{width:100%;padding:10px;margin-bottom:10px;border-radius:5px;border:1px solid #ccc;}
-#customer-form button{background-color:#28a745;color:white;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;width:100%;font-size:1rem;}
-#customer-form button:hover{background-color:#218838;}
-#status{margin-top:15px;font-weight:bold;color:#333;text-align:center;}
-#month-nav{text-align:center;margin-bottom:10px;}
-#month-nav button{padding:5px 10px;margin:0 5px;cursor:pointer;}
+  body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:0; }
+  header { text-align:center; padding:40px 20px; background:#333; color:white; }
+  header h1 { font-size:2.5rem; margin-bottom:10px; }
+  header p { font-size:1.2rem; color:#ddd; }
+  #booking { max-width:900px; margin:40px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.1); text-align:center; }
+  #month-nav { text-align:center; margin-bottom:10px; }
+  #month-nav button { padding:5px 10px; margin:0 5px; cursor:pointer; }
+  #calendar table { border-collapse: collapse; width:100%; max-width:700px; margin:0 auto; box-shadow:0 4px 10px rgba(0,0,0,0.1); border-radius:10px; overflow:hidden; }
+  #calendar th, #calendar td { padding:12px; text-align:center; cursor:pointer; }
+  #calendar td.available:hover { background-color:#d1f0d1; }
+  #calendar td.booked { background-color:#f0d1d1; cursor:not-allowed; }
+  #time-select { display:none; margin:20px auto; padding:10px; font-size:1rem; border-radius:5px; border:1px solid #ccc; width:200px; }
+  #customer-form { display:none; max-width:400px; margin:20px auto; text-align:left; }
+  #customer-form input, #customer-form textarea { width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
+  #customer-form button { background-color:#28a745; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; width:100%; font-size:1rem; }
+  #customer-form button:hover { background-color:#218838; }
+  #status { margin-top:15px; font-weight:bold; color:#333; text-align:center; }
 </style>
 </head>
 <body>
+
 <header>
-<h1>Boka din flytt med CityTransport</h1>
-<p>Välj datum och tid, se tillgänglighet och boka enkelt direkt här.</p>
+  <h1>Boka din flytt med CityTransport</h1>
+  <p>Välj datum och tid, se tillgänglighet och boka enkelt direkt här.</p>
 </header>
+
 <section id="booking">
-<div id="month-nav">
-<button id="prev-month">&lt; Föregående</button>
-<span id="current-month"></span>
-<button id="next-month">Nästa &gt;</button>
-</div>
-<div id="calendar"></div>
-<select id="time-select"><option value="">Välj tid</option></select>
-<form id="customer-form">
-<input type="text" id="name" name="name" placeholder="Ditt namn" required>
-<input type="email" id="email" name="email" placeholder="Din e-post" required>
-<input type="tel" id="phone" name="phone" placeholder="Ditt telefonnummer" required>
-<textarea id="message" name="message" placeholder="Meddelande (valfritt)"></textarea>
-<button type="submit">Skicka bokning</button>
-</form>
-<p id="status"></p>
+  <div id="month-nav">
+    <button id="prev-month">&lt; Föregående</button>
+    <span id="current-month"></span>
+    <button id="next-month">Nästa &gt;</button>
+  </div>
+  <div id="calendar"></div>
+
+  <select id="time-select">
+    <option value="">Välj tid</option>
+  </select>
+
+  <form id="customer-form">
+    <input type="text" id="name" name="name" placeholder="Ditt namn" required>
+    <input type="email" id="email" name="email" placeholder="Din e-post" required>
+    <input type="tel" id="phone" name="phone" placeholder="Ditt telefonnummer" required>
+    <textarea id="message" name="message" placeholder="Meddelande (valfritt)"></textarea>
+    <button type="submit">Skicka bokning</button>
+  </form>
+
+  <p id="status"></p>
 </section>
+
 <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <script>
 emailjs.init("E7HH_m3tC91tBo8Vr");
+
 let selectedDate=null,currentYear=new Date().getFullYear(),currentMonth=new Date().getMonth();
-const calendarEl=document.getElementById('calendar'),monthSpan=document.getElementById('current-month'),
-timeSelect=document.getElementById('time-select'),customerForm=document.getElementById('customer-form'),
-status=document.getElementById('status');
+const calendarEl=document.getElementById('calendar'),monthSpan=document.getElementById('current-month'),timeSelect=document.getElementById('time-select'),customerForm=document.getElementById('customer-form'),status=document.getElementById('status');
 let bookings={};
 
 function getAvailableTimes(dateStr){
-const date=new Date(dateStr);
-const day=date.getDay();
-let startHour=(day==0||day==6)?8:16,endHour=24,times=[];
-for(let h=startHour;h<endHour;h+=4){
-let t=(h<10?'0'+h:h)+":00";
-if(!bookings[dateStr]||!bookings[dateStr].includes(t))times.push(t);
-}
-return times;
+  const date=new Date(dateStr),day=date.getDay();
+  let startHour=(day===0||day===6)?8:16,endHour=24,times=[];
+  for(let h=startHour;h<endHour;h+=4){
+    let t=(h<10?'0'+h:h)+":00";
+    if(!bookings[dateStr]||!bookings[dateStr].includes(t))times.push(t);
+  }
+  return times;
 }
 
 function generateCalendar(){
-const firstDay=new Date(currentYear,currentMonth,1),lastDay=new Date(currentYear,currentMonth+1,0),
-weekdays=["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
-let table=`<table><tr>`;
-weekdays.forEach(d=>table+=`<th>${d}</th>`);table+=`</tr><tr>`;
-for(let i=0;i<firstDay.getDay();i++)table+=`<td></td>`;
-for(let day=1;day<=lastDay.getDate();day++){
-let date=new Date(currentYear,currentMonth,day),dayStr=date.toISOString().split('T')[0],
-cls=bookings[dayStr]?"booked":"available";
-table+=`<td class="${cls}" data-date="${dayStr}">${day}</td>`;
-if((day+firstDay.getDay())%7===0)table+=`</tr><tr>`;
-}
-table+=`</tr></table>`;
-calendarEl.innerHTML=table;
-monthSpan.textContent=firstDay.toLocaleString('sv-SE',{month:'long',year:'numeric'});
-document.querySelectorAll('#calendar td.available').forEach(cell=>{
-cell.addEventListener('click',()=>{
-selectedDate=cell.dataset.date;
-const times=getAvailableTimes(selectedDate);
-timeSelect.innerHTML='<option value="">Välj tid</option>';
-times.forEach(t=>{let option=document.createElement('option');option.value=t;option.textContent=t;timeSelect.appendChild(option);});
-timeSelect.style.display="block";customerForm.style.display="none";status.textContent="";
-});
-});
+  const firstDay=new Date(currentYear,currentMonth,1),lastDay=new Date(currentYear,currentMonth+1,0);
+  const weekdays=["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
+  let table=`<table><tr>`;
+  weekdays.forEach(d=>table+=`<th>${d}</th>`);
+  table+=`</tr><tr>`;
+  for(let i=0;i<firstDay.getDay();i++) table+=`<td></td>`;
+  for(let day=1;day<=lastDay.getDate();day++){
+    const date=new Date(currentYear,currentMonth,day),dayStr=date.toISOString().split('T')[0],cls=bookings[dayStr]?"booked":"available";
+    table+=`<td class="${cls}" data-date="${dayStr}">${day}</td>`;
+    if((day+firstDay.getDay())%7===0)table+=`</tr><tr>`;
+  }
+  table+=`</tr></table>`;
+  calendarEl.innerHTML=table;
+  monthSpan.textContent=firstDay.toLocaleString('sv-SE',{month:'long',year:'numeric'});
+  document.querySelectorAll('#calendar td.available').forEach(cell=>{
+    cell.addEventListener('click',()=>{
+      selectedDate=cell.dataset.date;
+      const times=getAvailableTimes(selectedDate);
+      timeSelect.innerHTML='<option value="">Välj tid</option>';
+      times.forEach(t=>{const option=document.createElement('option');option.value=t;option.textContent=t;timeSelect.appendChild(option);});
+      timeSelect.style.display="block";
+      customerForm.style.display="none";
+      status.textContent="";
+    });
+  });
 }
 
 document.getElementById('prev-month').addEventListener('click',()=>{currentMonth--;if(currentMonth<0){currentMonth=11;currentYear--;}generateCalendar();});
 document.getElementById('next-month').addEventListener('click',()=>{currentMonth++;if(currentMonth>11){currentMonth=0;currentYear++;}generateCalendar();});
+
 generateCalendar();
-
 timeSelect.addEventListener('change',()=>{customerForm.style.display=timeSelect.value?"block":"none";});
-
 customerForm.addEventListener('submit',function(e){
-e.preventDefault();
-if(!selectedDate){status.style.color="red";status.textContent="Välj datum först!";return;}
-if(!timeSelect.value){status.style.color="red";status.textContent="Välj tid först!";return;}
-if(!bookings[selectedDate])bookings[selectedDate]=[];
-bookings[selectedDate].push(timeSelect.value);
-let timeInput=customerForm.querySelector('input[name="time"]');
-if(!timeInput){timeInput=document.createElement('input');timeInput.type='hidden';timeInput.name='time';customerForm.appendChild(timeInput);}
-timeInput.value=selectedDate+" "+timeSelect.value;
-emailjs.sendForm('service_luw5k4u','template_cpux8e5',customerForm)
-.then(()=>{status.style.color="green";status.textContent="Bokning skickad!";customerForm.reset();timeSelect.value="";timeSelect.style.display="none";selectedDate=null;generateCalendar();},
-(err)=>{status.style.color="red";status.textContent="Något gick fel, försök igen.";console.error(err);});
+  e.preventDefault();
+  if(!selectedDate){status.style.color="red";status.textContent="Välj datum först!";return;}
+  if(!timeSelect.value){status.style.color="red";status.textContent="Välj tid först!";return;}
+  if(!bookings[selectedDate])bookings[selectedDate]=[];
+  bookings[selectedDate].push(timeSelect.value);
+  let timeInput=customerForm.querySelector('input[name="time"]');
+  if(!timeInput){timeInput=document.createElement('input');timeInput.type='hidden';timeInput.name='time';customerForm.appendChild(timeInput);}
+  timeInput.value=selectedDate+" "+timeSelect.value;
+  emailjs.sendForm('service_luw5k4u','template_cpux8e5',customerForm).then(()=>{
+    status.style.color="green";status.textContent="Bokning skickad!";
+    customerForm.reset();timeSelect.value="";timeSelect.style.display="none";selectedDate=null;generateCalendar();
+  },err=>{status.style.color="red";status.textContent="Något gick fel, försök igen.";console.error(err);});
 });
 </script>
+
 </body>
 </html>
