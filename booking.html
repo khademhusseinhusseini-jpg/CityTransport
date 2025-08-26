@@ -10,18 +10,20 @@
   header h1 { font-size:2.5rem; margin-bottom:10px; }
   header p { font-size:1.2rem; color:#ddd; }
   #booking { max-width:900px; margin:40px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.1); text-align:center; }
-  h2 { margin-top:30px; color:#333; }
+  #calendar { margin-bottom:20px; }
   #calendar table { border-collapse: collapse; width:100%; max-width:700px; margin:20px auto; box-shadow:0 4px 10px rgba(0,0,0,0.1); border-radius:10px; overflow:hidden; }
   #calendar th, #calendar td { padding:12px; text-align:center; cursor:pointer; }
-  #calendar td.available { background-color:#d4f4dd; transition:0.2s; }
-  #calendar td.available:hover { background-color:#a8e6a1; }
-  #calendar td.booked { background-color:#f4c2c2; cursor:not-allowed; }
+  #calendar td.available:hover { background-color:#d1f0d1; }
+  #calendar td.booked { background-color:#f0d1d1; cursor:not-allowed; }
+  #calendar td.empty { background-color:#f4f4f4; cursor:default; }
   #time-select { display:none; margin:20px auto; padding:10px; font-size:1rem; border-radius:5px; border:1px solid #ccc; }
   #customer-form { display:none; max-width:400px; margin:20px auto; text-align:left; }
   #customer-form input, #customer-form textarea { width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
   #customer-form button { background-color:#28a745; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; width:100%; font-size:1rem; }
   #customer-form button:hover { background-color:#218838; }
   #status { margin-top:15px; font-weight:bold; color:#333; text-align:center; }
+  .month-nav { text-align:center; margin-bottom:10px; }
+  .month-nav button { padding:5px 15px; margin:0 5px; cursor:pointer; font-size:1rem; }
 </style>
 </head>
 <body>
@@ -32,10 +34,14 @@
 </header>
 
 <section id="booking">
-  <h2>Välj datum</h2>
+  <div class="month-nav">
+    <button id="prev-month">&lt; Föregående</button>
+    <span id="month-label"></span>
+    <button id="next-month">Nästa &gt;</button>
+  </div>
+
   <div id="calendar"></div>
 
-  <h2>Välj tid</h2>
   <select id="time-select">
     <option value="">Välj tid</option>
   </select>
@@ -53,128 +59,124 @@
 
 <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <script>
-  emailjs.init("E7HH_m3tC91tBo8Vr"); // Din Public Key
+emailjs.init("E7HH_m3tC91tBo8Vr"); // Public Key
 
-  const calendarEl = document.getElementById('calendar');
-  const timeSelect = document.getElementById('time-select');
-  const customerForm = document.getElementById('customer-form');
-  const status = document.getElementById('status');
-  let selectedDate = null;
+let currentDate = new Date();
+const calendarEl = document.getElementById('calendar');
+const monthLabel = document.getElementById('month-label');
+const timeSelect = document.getElementById('time-select');
+const customerForm = document.getElementById('customer-form');
+const status = document.getElementById('status');
+let selectedDate = null;
 
-  // Testdata för bokade tider
-  let bookedSlots = {}; // { "2025-08-30": ["16:00","21:00"], ... }
+// Example booked slots (should fetch from Google Sheet / server)
+let bookedSlots = {
+  "2025-08-27": ["09:00"],
+  "2025-08-28": ["13:00"]
+};
 
-  function getAvailableTimes(dateStr){
-    const date = new Date(dateStr);
-    const day = date.getDay(); // 0=Sun, 6=Sat
-    let times = [];
-    if(day>=1 && day<=5){ // mån-fre 16:00–00:00
-      for(let h=16; h<24; h+=5){
-        times.push(h.toString().padStart(2,"0")+":00");
-      }
-    } else { // lör-sön 0-24
-      for(let h=0; h<24; h+=5){
-        times.push(h.toString().padStart(2,"0")+":00");
-      }
-    }
-    // ta bort redan bokade tider
-    if(bookedSlots[dateStr]){
-      times = times.filter(t => !bookedSlots[dateStr].includes(t));
-    }
-    return times;
+// Generate working hours
+function getWorkingTimes(date){
+  const day = date.getDay();
+  let times = [];
+  if(day===6 || day===0){ // Sat & Sun
+    for(let h=0; h<24; h+=5){ times.push(h.toString().padStart(2,"0")+":00"); }
+  } else { // Mon-Fri 16-00
+    for(let h=16; h<24; h+=5){ times.push(h.toString().padStart(2,"0")+":00"); }
   }
+  return times;
+}
 
-  function generateCalendar() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    let table = `<table><tr>`;
-    const weekdays = ["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
-    weekdays.forEach(d => table+=`<th>${d}</th>`); 
-    table += `</tr><tr>`;
-    for(let i=0;i<firstDay.getDay();i++) table += `<td></td>`;
-    for(let day=1; day<=lastDay.getDate(); day++){
-      const date = new Date(year, month, day);
-      const dayStr = date.toISOString().split('T')[0];
-      const cls = bookedSlots[dayStr] ? "booked" : "available";
-      table += `<td class="${cls}" data-date="${dayStr}">${day}</td>`;
-      if((day+firstDay.getDay())%7===0) table+=`</tr><tr>`;
-    }
-    table+=`</tr></table>`;
-    calendarEl.innerHTML = table;
+function generateCalendar(year, month){
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const weekdays = ["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
+  monthLabel.textContent = firstDay.toLocaleString('sv-SE', {month:'long', year:'numeric'});
 
-    document.querySelectorAll('#calendar td.available').forEach(cell => {
-      cell.addEventListener("click", () => {
-        selectedDate = cell.dataset.date;
-        const times = getAvailableTimes(selectedDate);
-        timeSelect.innerHTML = `<option value="">Välj tid</option>`;
-        times.forEach(t => {
+  let table = "<table><tr>";
+  weekdays.forEach(d=>table+="<th>"+d+"</th>");
+  table+="</tr><tr>";
+  for(let i=0;i<firstDay.getDay();i++) table+='<td class="empty"></td>';
+  for(let day=1; day<=lastDay.getDate(); day++){
+    const date = new Date(year, month, day);
+    const dayStr = date.toISOString().split('T')[0];
+    const isBooked = bookedSlots[dayStr] && bookedSlots[dayStr].length===getWorkingTimes(date).length;
+    const cls = isBooked ? "booked" : "available";
+    table += `<td class="${cls}" data-date="${dayStr}">${day}</td>`;
+    if((day+firstDay.getDay())%7===0) table+="</tr><tr>";
+  }
+  table+="</tr></table>";
+  calendarEl.innerHTML = table;
+
+  document.querySelectorAll('#calendar td.available').forEach(cell=>{
+    cell.addEventListener('click',()=>{
+      selectedDate = cell.dataset.date;
+      timeSelect.innerHTML = `<option value="">Välj tid</option>`;
+      const times = getWorkingTimes(new Date(selectedDate));
+      const booked = bookedSlots[selectedDate] || [];
+      times.forEach(t=>{
+        if(!booked.includes(t)){
           const option = document.createElement("option");
           option.value = t; option.textContent = t;
           timeSelect.appendChild(option);
-        });
-        timeSelect.style.display = times.length>0 ? "block" : "none";
-        customerForm.style.display="none";
-        status.textContent = times.length===0 ? "Inga lediga tider denna dag." : "";
+        }
       });
+      timeSelect.style.display = "block";
+      customerForm.style.display = "none";
+      status.textContent = "";
     });
+  });
+}
+
+document.getElementById('prev-month').addEventListener('click',()=>{
+  currentDate.setMonth(currentDate.getMonth()-1);
+  generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+});
+document.getElementById('next-month').addEventListener('click',()=>{
+  currentDate.setMonth(currentDate.getMonth()+1);
+  generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+});
+
+generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+
+timeSelect.addEventListener("change", ()=>{
+  if(timeSelect.value) customerForm.style.display="block";
+  else customerForm.style.display="none";
+});
+
+customerForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  if(!selectedDate){ status.style.color="red"; status.textContent="Välj datum först!"; return; }
+  if(!timeSelect.value){ status.style.color="red"; status.textContent="Välj tid först!"; return; }
+
+  // Add hidden field for time
+  let timeInput = customerForm.querySelector('input[name="time"]');
+  if(!timeInput){
+    timeInput = document.createElement('input');
+    timeInput.type = 'hidden';
+    timeInput.name = 'time';
+    customerForm.appendChild(timeInput);
   }
+  timeInput.value = selectedDate+" "+timeSelect.value;
 
-  generateCalendar();
-
-  timeSelect.addEventListener("change", () => {
-    if(timeSelect.value){
-      customerForm.style.display="block";
-    } else {
-      customerForm.style.display="none";
-    }
-  });
-
-  customerForm.addEventListener('submit', function(e){
-    e.preventDefault();
-
-    if(!selectedDate){
+  emailjs.sendForm('service_luw5k4u', 'template_cpux8e5', customerForm)
+    .then(()=>{
+      status.style.color="green";
+      status.textContent="Bokning skickad! Bekräftelse skickas till kunden.";
+      // Update bookedSlots locally
+      if(!bookedSlots[selectedDate]) bookedSlots[selectedDate]=[];
+      bookedSlots[selectedDate].push(timeSelect.value);
+      generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+      customerForm.reset();
+      timeSelect.value="";
+      timeSelect.style.display="none";
+      selectedDate=null;
+    }, (err)=>{
       status.style.color="red";
-      status.textContent="Välj datum först!";
-      return;
-    }
-    if(!timeSelect.value){
-      status.style.color="red";
-      status.textContent="Välj tid först!";
-      return;
-    }
-
-    // Lagra bokad tid lokalt
-    if(!bookedSlots[selectedDate]) bookedSlots[selectedDate]=[];
-    bookedSlots[selectedDate].push(timeSelect.value);
-
-    // Skicka med EmailJS
-    let timeInput = customerForm.querySelector('input[name="time"]');
-    if(!timeInput){
-      timeInput = document.createElement('input');
-      timeInput.type='hidden';
-      timeInput.name='time';
-      customerForm.appendChild(timeInput);
-    }
-    timeInput.value = selectedDate + " " + timeSelect.value;
-
-    emailjs.sendForm('service_luw5k4u', 'template_cpux8e5', customerForm)
-      .then(()=>{
-        status.style.color="green";
-        status.textContent="Bokning skickad! Bekräftelse skickas till kunden.";
-        customerForm.reset();
-        timeSelect.value="";
-        timeSelect.style.display="none";
-        selectedDate=null;
-        generateCalendar(); // uppdatera kalendern med bokad tid
-      }, (err)=>{
-        status.style.color="red";
-        status.textContent="Något gick fel, försök igen.";
-        console.error("EmailJS Error:", err);
-      });
-  });
+      status.textContent="Något gick fel, försök igen.";
+      console.error("EmailJS Error:", err);
+    });
+});
 </script>
 
 </body>
