@@ -80,7 +80,7 @@ function getAvailableTimes(dateStr){
 // Generera kalender
 function generateCalendar(){
   const firstDay=new Date(currentYear,currentMonth,1),lastDay=new Date(currentYear,currentMonth+1,0);
-  const weekdays=["Sön","Mån","Tis","Ons","Tor","Fre","Lör"];
+  const weekdays=["Mån","Tis","Ons","Tor","Fre","Lör","Sön"];
   let table=`<table><tr>`;
   weekdays.forEach(d=>table+=`<th>${d}</th>`);
   table+=`</tr><tr>`;
